@@ -104,7 +104,7 @@ impl BinCatReader {
             let current_band_size = 360.0 / (current_band.len() as f64);
             let lower_index_ra = (ra_lower / current_band_size) as usize;
             let upper_index_ra =
-                ((ra_upper / current_band_size) as usize).min(current_band.len() - 1);
+                ((ra_upper / current_band_size) as usize + 1).min(current_band.len() - 1);
             println!(
                 "{}, {}, {}, {}",
                 lower_index_ra, upper_index_ra, lower_index_dec, upper_index_dec
