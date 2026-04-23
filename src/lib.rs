@@ -4,6 +4,7 @@ use std::{
     path::Path,
 };
 
+use log::trace;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -65,9 +66,7 @@ impl BinCatReader {
             }
             suboffsets.push(current);
         }
-        println!("offsets: {:?}", offsets);
         for i in 0..(suboffsets.len() - 1) {
-            println!("{}/{}", i + 1, suboffsets.len());
             let band_end = *suboffsets[i + 1].first().unwrap();
             suboffsets[i].push(band_end);
         }
@@ -75,12 +74,11 @@ impl BinCatReader {
             .last_mut()
             .unwrap()
             .push(file.metadata().unwrap().len() as usize);
-        println!(
-            "first offsets: {:?}, \nlast offsets: {:?}",
-            suboffsets.first().unwrap(),
-            suboffsets.iter().last().unwrap()
+        trace!("number of offsets: {}", offsets.len());
+        trace!(
+            "number of suboffsets: {}",
+            suboffsets.iter().fold(0, |acc, x| acc + x.len())
         );
-        println!("number of offsets: {}", offsets.len());
         Ok(Self {
             file,
             offsets: suboffsets,
@@ -95,6 +93,10 @@ impl BinCatReader {
         dec_lower: f64,
         dec_upper: f64,
     ) -> Vec<[f64; 3]> {
+        trace!(
+            "Reading from RA {} to {}, DEC {} to {}",
+            ra_lower, ra_upper, dec_lower, dec_upper
+        );
         let lower_index_dec = ((dec_lower + 90.0) / (self.band_size)) as usize;
         let upper_index_dec =
             (((dec_upper + 90.0) / (self.band_size)) as usize).min(self.offsets.len() - 1);
@@ -105,10 +107,6 @@ impl BinCatReader {
             let lower_index_ra = (ra_lower / current_band_size) as usize;
             let upper_index_ra =
                 ((ra_upper / current_band_size) as usize + 1).min(current_band.len() - 1);
-            println!(
-                "{}, {}, {}, {}",
-                lower_index_ra, upper_index_ra, lower_index_dec, upper_index_dec
-            );
             let lower_offset = current_band[lower_index_ra];
             let upper_offset = current_band[upper_index_ra];
             let mut buffer: Vec<u8> = vec![0; upper_offset - lower_offset];
@@ -122,6 +120,7 @@ impl BinCatReader {
                 ]
             }));
         }
+        trace!("Read {} coordinates", out.len());
         out
     }
 
