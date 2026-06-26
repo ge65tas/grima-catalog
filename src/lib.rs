@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-use log::trace;
+use log::{error, trace};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -86,7 +86,51 @@ impl BinCatReader {
         })
     }
 
-    pub fn read_region(
+    pub fn read_rectangle(
+        &mut self,
+        ra_center: f64,
+        dec_center: f64,
+        width: f64,
+        height: f64,
+    ) -> Vec<[f64; 3]> {
+        if !(0.0..=360.0).contains(&ra_center) || !(-90.0..=90.0).contains(&dec_center) {
+            error!("Invalid center: {}, {}", ra_center, dec_center);
+            return Vec::new();
+        }
+        let dec_upper = dec_center + 0.5 * height;
+        let dec_lower = dec_center - 0.5 * height;
+        let ra_upper = ra_center + 0.5 * width / dec_center.cos();
+        let ra_lower = ra_center - 0.5 * width / dec_center.cos();
+        let stars = self.read_region(ra_lower, ra_upper, dec_lower, dec_upper);
+        stars
+            .into_iter()
+            .filter(|x| {
+                ((x[0] - ra_center) / x[1].cos()).abs() < 0.5 * width
+                    && (x[1] - dec_center).abs() < 0.5 * height
+            })
+            .collect()
+    }
+
+    pub fn read_circle(&mut self, ra_center: f64, dec_center: f64, radius: f64) -> Vec<[f64; 3]> {
+        if !(0.0..=360.0).contains(&ra_center) || !(-90.0..=90.0).contains(&dec_center) {
+            error!("Invalid center: {}, {}", ra_center, dec_center);
+            return Vec::new();
+        }
+        let dec_upper = dec_center + radius;
+        let dec_lower = dec_center - radius;
+        let ra_upper = ra_center + radius / dec_center.cos();
+        let ra_lower = ra_center - radius / dec_center.cos();
+        let stars = self.read_region(ra_lower, ra_upper, dec_lower, dec_upper);
+        stars
+            .into_iter()
+            .filter(|x| {
+                ((x[0] - ra_center) / x[1].cos()).powi(2) + (x[1] - dec_center).powi(2)
+                    > radius.powi(2)
+            })
+            .collect()
+    }
+
+    fn read_region(
         &mut self,
         ra_lower: f64,
         ra_upper: f64,
