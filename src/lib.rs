@@ -125,7 +125,7 @@ impl BinCatReader {
             .into_iter()
             .filter(|x| {
                 ((x[0] - ra_center) / x[1].to_radians().cos()).powi(2) + (x[1] - dec_center).powi(2)
-                    > radius.powi(2)
+                    < radius.powi(2)
             })
             .collect()
     }
