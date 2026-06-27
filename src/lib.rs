@@ -153,6 +153,10 @@ impl BinCatReader {
                 ((ra_upper / current_band_size) as usize + 1).min(current_band.len() - 1);
             let lower_offset = current_band[lower_index_ra];
             let upper_offset = current_band[upper_index_ra];
+            trace!(
+                "memory offsets for read: {}, {}",
+                lower_offset, upper_offset
+            );
             let mut buffer: Vec<u8> = vec![0; upper_offset - lower_offset];
             self.file.seek(Start(lower_offset as u64)).unwrap();
             self.file.read_exact(&mut buffer).unwrap();
