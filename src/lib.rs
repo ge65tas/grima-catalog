@@ -99,13 +99,13 @@ impl BinCatReader {
         }
         let dec_upper = dec_center + 0.5 * height;
         let dec_lower = dec_center - 0.5 * height;
-        let ra_upper = ra_center + 0.5 * width / dec_center.cos();
-        let ra_lower = ra_center - 0.5 * width / dec_center.cos();
+        let ra_upper = ra_center + 0.5 * width / dec_center.to_radians().cos();
+        let ra_lower = ra_center - 0.5 * width / dec_center.to_radians().cos();
         let stars = self.read_region(ra_lower, ra_upper, dec_lower, dec_upper);
         stars
             .into_iter()
             .filter(|x| {
-                ((x[0] - ra_center) / x[1].cos()).abs() < 0.5 * width
+                ((x[0] - ra_center) / x[1].to_radians().cos()).abs() < 0.5 * width
                     && (x[1] - dec_center).abs() < 0.5 * height
             })
             .collect()
@@ -118,13 +118,13 @@ impl BinCatReader {
         }
         let dec_upper = dec_center + radius;
         let dec_lower = dec_center - radius;
-        let ra_upper = ra_center + radius / dec_center.cos();
-        let ra_lower = ra_center - radius / dec_center.cos();
+        let ra_upper = ra_center + radius / dec_center.to_radians().cos();
+        let ra_lower = ra_center - radius / dec_center.to_radians().cos();
         let stars = self.read_region(ra_lower, ra_upper, dec_lower, dec_upper);
         stars
             .into_iter()
             .filter(|x| {
-                ((x[0] - ra_center) / x[1].cos()).powi(2) + (x[1] - dec_center).powi(2)
+                ((x[0] - ra_center) / x[1].to_radians().cos()).powi(2) + (x[1] - dec_center).powi(2)
                     > radius.powi(2)
             })
             .collect()
