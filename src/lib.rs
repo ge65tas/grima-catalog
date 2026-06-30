@@ -195,6 +195,7 @@ pub fn write_bin_cat(file: impl AsRef<Path>, mut sources: Vec<[f64; 3]>, band_si
     let mut band_start = 0;
     for (index, dec) in decs.iter().enumerate() {
         println!("{}/{}", index, decs.len());
+        println!("sources remaining: {}", sources.len());
         let lower_index = match sources
             .iter()
             .enumerate()
@@ -221,6 +222,11 @@ pub fn write_bin_cat(file: impl AsRef<Path>, mut sources: Vec<[f64; 3]>, band_si
             .take(sources.len() - lower_index)
             .cloned()
             .collect();
+        println!("entries in band: {}", current.len());
+        println!(
+            "expected remaining sources: {}",
+            sources.len() - current.len()
+        );
         sources.truncate(lower_index);
         current.sort_unstable_by(|x, y| x[0].total_cmp(&y[0]));
         let band_size_ra = band_size
