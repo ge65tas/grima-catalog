@@ -183,16 +183,31 @@ pub fn write_bin_cat(file: impl AsRef<Path>, mut sources: Vec<[f64; 3]>, band_si
     const BYTES_PER_ENTRY: usize = 8 * 3;
     let mut file = BufWriter::new(File::create(file).unwrap());
     let mut decs: Vec<f64> = Vec::new();
+    let mut ras: Vec<Vec<f64>> = Vec::new();
     sources.sort_unstable_by(|x, y| y[1].total_cmp(&x[1]));
-    let mut current_pos = -90.0 + band_size;
-    while current_pos < 90.0 {
-        decs.push(current_pos);
-        current_pos += band_size;
+    let mut current_dec = -90.0 + band_size;
+    let mut current_ra;
+    while current_dec < 90.0 {
+        let mut current_ra_vec = Vec::new();
+        let band_size_ra = band_size
+            / current_dec
+                .to_radians()
+                .cos()
+                .max((current_dec + band_size).to_radians().cos());
+        current_ra = 0.0;
+        while current_ra < 360.0 {
+            current_ra_vec.push(current_ra);
+            current_ra += band_size_ra;
+        }
+        ras.push(current_ra_vec);
+        decs.push(current_dec);
+        current_dec += band_size;
     }
-
-    let mut bands = Vec::new();
     let mut suboffsets: Vec<Vec<usize>> = Vec::new();
     let mut band_start = 0;
+    let subheader_size = (2 + decs.len()) * 8;
+    let header_size = ras.iter().map(|x| x.len()).sum::<usize>() * 8 + subheader_size;
+    file.seek(Start(header_size as u64)).unwrap();
     for (index, dec) in decs.iter().enumerate() {
         println!("{}/{}", index, decs.len());
         println!("sources remaining: {}", sources.len());
@@ -211,7 +226,6 @@ pub fn write_bin_cat(file: impl AsRef<Path>, mut sources: Vec<[f64; 3]>, band_si
                 } else {
                     println!("empty band!");
                     suboffsets.push(vec![band_start]);
-                    bands.push(Vec::new());
                     continue;
                 }
             }
@@ -229,25 +243,20 @@ pub fn write_bin_cat(file: impl AsRef<Path>, mut sources: Vec<[f64; 3]>, band_si
         );
         sources.truncate(lower_index);
         current.sort_unstable_by(|x, y| x[0].total_cmp(&y[0]));
-        let band_size_ra = band_size
-            / dec
-                .to_radians()
-                .cos()
-                .max((dec + band_size).to_radians().cos());
-        let chunks = ((360.0 / band_size_ra) as usize).max(1);
-        let current_offsets: Vec<usize> = (0..chunks)
-            .map(|i| {
-                let current_ra = i as f64 * band_size_ra;
-                current.iter().filter(|&x| x[0] < current_ra).count() * BYTES_PER_ENTRY + band_start
-            })
+        let current_offsets: Vec<usize> = ras[index]
+            .iter()
+            .map(|ra| current.iter().filter(|&x| x[0] < *ra).count() * BYTES_PER_ENTRY + band_start)
             .collect();
         band_start += current.len() * BYTES_PER_ENTRY;
-        bands.push(current);
+        for entry in current {
+            for number in entry {
+                file.write_all(&number.to_le_bytes()).unwrap();
+            }
+        }
         suboffsets.push(current_offsets);
     }
     // start at size of header to give file-global offsets. band_size + header_size/file_body_start + band_end for each band + chunk_end for each chunk within the bands
-    let subheader_size = (2 + bands.len()) * 8;
-    let header_size = suboffsets.iter().map(|x| x.len()).sum::<usize>() * 8 + subheader_size;
+    file.seek(Start(0)).unwrap();
     let offsets: Vec<usize> = suboffsets
         .iter()
         .scan(subheader_size, |state, x| {
@@ -263,12 +272,5 @@ pub fn write_bin_cat(file: impl AsRef<Path>, mut sources: Vec<[f64; 3]>, band_si
     for offset in suboffsets.into_iter().flatten() {
         let true_offset = offset + header_size;
         file.write_all(&true_offset.to_le_bytes()).unwrap();
-    }
-    for band in bands {
-        for entry in band {
-            for number in entry {
-                file.write_all(&number.to_le_bytes()).unwrap();
-            }
-        }
     }
 }
