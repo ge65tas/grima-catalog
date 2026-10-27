@@ -195,7 +195,7 @@ pub fn write_bin_cat(file: impl AsRef<Path>, mut sources: Vec<[f64; 3]>, band_si
                 .cos()
                 .max((current_dec + band_size).to_radians().cos());
         current_ra = 0.0;
-        while current_ra < 360.0 {
+        while current_ra < (360.0 - band_size_ra) {
             current_ra_vec.push(current_ra);
             current_ra += band_size_ra;
         }
