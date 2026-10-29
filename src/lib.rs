@@ -190,7 +190,7 @@ impl BinCatReader {
         let mut j = 0;
         while bytes_read == BLOCK_SIZE {
             bytes_read = self.file.read(&mut read_buffer).unwrap();
-            for i in 0..(BLOCK_SIZE / 8) {
+            for i in 0..(bytes_read / 8) {
                 parse_buffer[j] = Self::bytes_to_float(&read_buffer[(i * 8)..(i + 1) * 8]);
                 j += 1;
                 if j == 3 {
