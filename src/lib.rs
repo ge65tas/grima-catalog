@@ -1,6 +1,7 @@
 use std::{
     fs::File,
     io::{BufWriter, Read, Seek, SeekFrom::Start, Write},
+    os::unix::fs::MetadataExt,
     path::Path,
 };
 
@@ -176,6 +177,29 @@ impl BinCatReader {
         let mut byte_buffer = [0; 8];
         byte_buffer.copy_from_slice(bytes);
         f64::from_le_bytes(byte_buffer)
+    }
+
+    pub fn read_all(&mut self) -> Vec<[f64; 3]> {
+        let data_start = self.offsets[0][0];
+        let size = (self.file.metadata().unwrap().size() as usize - data_start) / 24;
+        let mut out = Vec::with_capacity(size);
+        self.file.seek(Start(data_start as u64)).unwrap();
+        let mut read_buffer: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let mut bytes_read = BLOCK_SIZE;
+        let mut parse_buffer: [f64; 3] = [0.0; 3];
+        let mut j = 0;
+        while bytes_read == BLOCK_SIZE {
+            bytes_read = self.file.read(&mut read_buffer).unwrap();
+            for i in 0..(BLOCK_SIZE / 8) {
+                parse_buffer[j] = Self::bytes_to_float(&read_buffer[(i * 8)..(i + 1) * 8]);
+                j += 1;
+                if j == 3 {
+                    j = 0;
+                    out.push(parse_buffer);
+                }
+            }
+        }
+        out
     }
 }
 
